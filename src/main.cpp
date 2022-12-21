@@ -166,27 +166,35 @@ void receiveCommands () {
 		byte value=command.toInt();
 		switch(type) {
 		case FORWARD:
+			Serial.print("FORWARD ");
 			leftMotor.speed(value);
 			rightMotor.speed(-value); break;
 		case BACKWARD:
+			Serial.print("BACKWARD ");
 			leftMotor.speed(-value);
 			rightMotor.speed(value); break;
 		case LEFT:
+			Serial.print("LEFT ");
 			leftMotor.speed(value);
 			rightMotor.speed(value); break;
 		case RIGHT:
+			Serial.print("RIGHT ");
 			leftMotor.speed(-value);
 			rightMotor.speed(-value); break;
 		case TURN_R:
+			Serial.print("TURN_R ");
 			leftMotor.speed(value);
 			rightMotor.speed(0); break;
 		case TURN_L:
+			Serial.print("TURN_L ");
 			leftMotor.speed(0);
 			rightMotor.speed(value); break;
 		default:
+			Serial.print("STOP ");
 			leftMotor.stop();
 			rightMotor.stop();
 		}
+		Serial.println(value);
 	}
 }
 long prevPrint=0;
@@ -196,6 +204,7 @@ void loop() {
 	leftMotor.run();
 	rightMotor.run();
 	if (millis()-prevPrint>100) {
-		Serial.print(">leftMotor:")
+		Serial.print(">leftMotor:");Serial.println(leftMotor.getSpeed());
+		Serial.print(">rightMotor:");Serial.println(leftMotor.getSpeed());
 	}
 }
