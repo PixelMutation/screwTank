@@ -117,6 +117,17 @@ public:
 	void setAccel(uint16_t Accel) {
 		accel=Accel;
 	}
+
+	void setMicrostep(uint8_t microsteps) {
+		switch(microsteps) {
+			case 1: stepsize=FULL;
+			case 2: stepsize=HALF;
+			case 4: stepsize=QUARTER;
+			case 8: stepsize=EIGHTH;
+			case 16: stepsize=SIXTEENTH;
+			default: stepsize=QUARTER;
+		}
+	}
 	void setMaxSpeed(int16_t stepsPerSecond){
 		maxSpeed=stepsPerSecond;
 	}
@@ -257,9 +268,8 @@ void receiveCommands () {
 			rightMotor.setAccel(value); break;
 		case SET_MICROSTEP: // set speed of right side
 			Serial.print("SET_MICROSTEP ");
-			leftMotor.setSpeed(value);
-			rightMotor.setSpeed(value); break;
-
+			leftMotor.setMicrostep(value);
+			rightMotor.setMicrostep(value); break;
 		default:
 			Serial.print("STOP ");
 			speedL=0;
