@@ -68,33 +68,7 @@ public:
 		// disable driver
 		off();
 		// set microstepping
-		stepsize=stepSize;
-		switch (stepSize) {
-		case FULL: 
-			digitalWrite(MS1,LOW);
-			digitalWrite(MS2,LOW);
-			digitalWrite(MS3,LOW); break;
-		case HALF: 
-			digitalWrite(MS1,HIGH);
-			digitalWrite(MS2,LOW);
-			digitalWrite(MS3,LOW); break;
-		case QUARTER: 
-			digitalWrite(MS1,LOW);
-			digitalWrite(MS2,HIGH);
-			digitalWrite(MS3,LOW); break;
-		case EIGHTH: 
-			digitalWrite(MS1,HIGH);
-			digitalWrite(MS2,HIGH);
-			digitalWrite(MS3,LOW); break;
-		case SIXTEENTH: 
-			digitalWrite(MS1,HIGH);
-			digitalWrite(MS2,HIGH);
-			digitalWrite(MS3,HIGH); break;
-		default: 
-			digitalWrite(MS1,LOW);
-			digitalWrite(MS2,LOW);
-			digitalWrite(MS3,LOW);
-		}
+		setMicrostep(stepSize);
 	}
 
 	void on() {
@@ -126,6 +100,32 @@ public:
 			case 8: stepsize=EIGHTH;
 			case 16: stepsize=SIXTEENTH;
 			default: stepsize=QUARTER;
+		}
+		switch (stepsize) {
+		case FULL: 
+			digitalWrite(MS1,LOW);
+			digitalWrite(MS2,LOW);
+			digitalWrite(MS3,LOW); break;
+		case HALF: 
+			digitalWrite(MS1,HIGH);
+			digitalWrite(MS2,LOW);
+			digitalWrite(MS3,LOW); break;
+		case QUARTER: 
+			digitalWrite(MS1,LOW);
+			digitalWrite(MS2,HIGH);
+			digitalWrite(MS3,LOW); break;
+		case EIGHTH: 
+			digitalWrite(MS1,HIGH);
+			digitalWrite(MS2,HIGH);
+			digitalWrite(MS3,LOW); break;
+		case SIXTEENTH: 
+			digitalWrite(MS1,HIGH);
+			digitalWrite(MS2,HIGH);
+			digitalWrite(MS3,HIGH); break;
+		default: 
+			digitalWrite(MS1,LOW);
+			digitalWrite(MS2,LOW);
+			digitalWrite(MS3,LOW);
 		}
 	}
 	void setMaxSpeed(int16_t stepsPerSecond){
