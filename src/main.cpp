@@ -322,9 +322,9 @@ void loop() {
 
 	if (millis()-prevSec>2000) {
 		prevSec=millis();
-		Serial.print("Target L:");Serial.print(leftMotor.getTargetSpeed());Serial.print(" R: ");Serial.print(rightMotor.getTargetSpeed());
-		Serial.print("Current L:");Serial.print(leftMotor.getSpeed());Serial.print(" R: ");Serial.print(rightMotor.getSpeed());
-		Serial.print("Average L:");Serial.print(leftMotor.getAverageSpeed());Serial.print(" R: ");Serial.print(rightMotor.getAverageSpeed());
+		Serial.print("Target L:");Serial.print(leftMotor.getTargetSpeed());Serial.print(" R:");Serial.print(rightMotor.getTargetSpeed());
+		Serial.print(" Current L:");Serial.print(leftMotor.getSpeed());Serial.print(" R:");Serial.print(rightMotor.getSpeed());
+		Serial.print(" Average L:");Serial.print(leftMotor.getAverageSpeed());Serial.print(" R:");Serial.print(rightMotor.getAverageSpeed());
 		Serial.println();
 	}
 
