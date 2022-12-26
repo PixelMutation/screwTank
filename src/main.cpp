@@ -29,7 +29,7 @@ enum commandType{
 	SET_MICROSTEP = 'M' // change microstep value
 };
 
-uint16_t stepCount=0;
+
 
 class continuousStepper{
 	int16_t speed=0;
@@ -42,7 +42,9 @@ class continuousStepper{
 	bool invert;
 	bool stepState=0;
 	uint8_t EN,DIR,STP,SLP,RST,MS1,MS2,MS3;
-
+	unsigned long prevSpeedMeasureTime=0;
+	uint16_t stepCount=0;
+	int direction=1;
 public:
 	continuousStepper(	uint8_t dir,
 						uint8_t stp,
@@ -137,8 +139,15 @@ public:
 		// targetSpeed=((float)(maxSpeed*stepsize)/255)*Speed;
 		// Serial.println(targetSpeed);
 	};
+	int16_t getAverageSpeed() { // calculated using steps/time since last call of this function
+		uint16_t averagespeed = stepCount/(millis()-prevSpeedMeasureTime);
+		stepCount=0;
+		prevSpeedMeasureTime=millis();
+		return averagespeed;
+	}
 	int16_t getSpeed() {return speed;};
 	int16_t getTargetSpeed() {return targetSpeed;};
+
 	void run() {
 		// calculate new speed using accel parameter
 		if (millis()-prevAccelTime_ms>1000/accel) {
@@ -157,12 +166,14 @@ public:
 			}
 			// set direction based on speed
 			if (speed>0) {
+				direction=1;
 				if (invert) {
 					digitalWrite(DIR,HIGH);
 				} else {
 					digitalWrite(DIR,LOW);
 				}
 			} else if (speed<0) {
+				direction=-1;
 				if (invert) {
 					digitalWrite(DIR,LOW);
 				} else {
@@ -179,7 +190,7 @@ public:
 				prevStepTime_us=micros();
 				stepState=!stepState;
 				digitalWrite(STP,stepState);
-				stepCount++;
+				stepCount+=direction;
 			}
 		}
 
@@ -309,10 +320,12 @@ void loop() {
 		// Serial.print(">rightMotorTarget:");Serial.println(rightMotor.getTargetSpeed());
 	}
 
-	if (millis()-prevSec>1000) {
+	if (millis()-prevSec>2000) {
 		prevSec=millis();
-		// Serial.print(">stepFreq:");Serial.println((float)stepCount/2);
-		stepCount=0;
+		Serial.print("Target L:");Serial.print(leftMotor.getTargetSpeed());Serial.print(" R: ");Serial.print(rightMotor.getTargetSpeed());
+		Serial.print("Current L:");Serial.print(leftMotor.getSpeed());Serial.print(" R: ");Serial.print(rightMotor.getSpeed());
+		Serial.print("Average L:");Serial.print(leftMotor.getAverageSpeed());Serial.print(" R: ");Serial.print(rightMotor.getAverageSpeed());
+		Serial.println();
 	}
 
 }
