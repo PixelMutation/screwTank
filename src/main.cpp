@@ -3,6 +3,12 @@
 // set orientation of barrels (true if screws turn inwards to drive forward)
 // (inwards meaning clockwise on left, anticlockwise on right)
 #define THREADS_INWARDS true
+// absolute max speed
+#define MAX_SPEED 500
+// absolute max accel
+#define MAX_ACCEL 500
+
+#define BAUD 9600
 
 enum microstep{
 	FULL      = 1,
@@ -43,7 +49,7 @@ class continuousStepper{
 	bool stepState=0;
 	uint8_t EN,DIR,STP,SLP,RST,MS1,MS2,MS3;
 	unsigned long prevSpeedMeasureTime=0;
-	uint16_t stepCount=0;
+	int16_t stepCount=0;
 	int direction=1;
 public:
 	continuousStepper(	uint8_t dir,
@@ -91,7 +97,7 @@ public:
 
 	// accel in step/s^2
 	void setAccel(uint16_t Accel) {
-		accel=Accel;
+		accel=constrain(Accel,0,MAX_ACCEL);
 	}
 
 	void setMicrostep(uint8_t microsteps) {
@@ -131,16 +137,16 @@ public:
 		}
 	}
 	void setMaxSpeed(int16_t stepsPerSecond){
-		maxSpeed=stepsPerSecond;
+		maxSpeed=constrain(stepsPerSecond,0,MAX_SPEED); // 
 	}
 	void setSpeed(int16_t Speed) {
-		constrain(Speed,-255,255);
-		targetSpeed=map(Speed,-255,255,-maxSpeed*stepsize,maxSpeed*stepsize);
+		Speed=constrain(Speed,-255,255);
+		targetSpeed=map(Speed,-255,255,-maxSpeed,maxSpeed);
 		// targetSpeed=((float)(maxSpeed*stepsize)/255)*Speed;
 		// Serial.println(targetSpeed);
 	};
 	int16_t getAverageSpeed() { // calculated using steps/time since last call of this function
-		uint16_t averagespeed = stepCount/(millis()-prevSpeedMeasureTime);
+		uint16_t averagespeed = (stepCount/2)/((millis()-prevSpeedMeasureTime)/1000);
 		stepCount=0;
 		prevSpeedMeasureTime=millis();
 		return averagespeed;
@@ -152,16 +158,16 @@ public:
 		// calculate new speed using accel parameter
 		if (millis()-prevAccelTime_ms>1000/accel) {
 			prevAccelTime_ms=millis();
-			if (speed<targetSpeed) {
+			if (speed<targetSpeed*stepsize) {
 				speed+=stepsize;
-				if (speed>targetSpeed) {
-					speed=targetSpeed;
+				if (speed>targetSpeed*stepsize) {
+					speed=targetSpeed*stepsize;
 				}
 			}
-			else if (speed>targetSpeed) {
+			else if (speed>targetSpeed*stepsize) {
 				speed-=stepsize;
-				if (speed<targetSpeed) {
-					speed=targetSpeed;
+				if (speed<targetSpeed*stepsize) {
+					speed=targetSpeed*stepsize;
 				}
 			}
 			// set direction based on speed
@@ -209,7 +215,7 @@ continuousStepper leftMotor(A0,A1,A2,A3,A4,A5,A6,A7,false);
 continuousStepper rightMotor(2,3,4,5,6,7,8,9,true);
 
 void setup() {
-	Serial.begin(115200);
+	Serial.begin(BAUD);
 	pinMode(13,INPUT); // used to detect power to motors, prevent sudden current
 	leftMotor.init(QUARTER);
 	leftMotor.on();
@@ -230,7 +236,7 @@ void receiveCommands () {
 		// Serial.println(type);
 		String val = command.substring(1,command.length());
 		int16_t value=val.toInt();
-		constrain(value,-255,255);
+		value=constrain(value,-255,255);
 		switch(type) {
 		case FORWARD: // rotate inwards to drive forward
 			Serial.print("FORWARD ");
@@ -271,16 +277,16 @@ void receiveCommands () {
 			speedR=value; break;
 		case SET_SPEED: // set speed of right side
 			Serial.print("SET_SPEED ");
-			leftMotor.setSpeed(value);
-			rightMotor.setSpeed(value); break;
+			leftMotor.setSpeed(abs(value));
+			rightMotor.setSpeed(abs(value)); break;
 		case SET_ACCEL: // set accel of right side
 			Serial.print("SET_ACCEL ");
-			leftMotor.setAccel(value);
-			rightMotor.setAccel(value); break;
+			leftMotor.setAccel((uint16_t)value);
+			rightMotor.setAccel((uint16_t)value); break;
 		case SET_MICROSTEP: // set speed of right side
 			Serial.print("SET_MICROSTEP ");
-			leftMotor.setMicrostep(value);
-			rightMotor.setMicrostep(value); break;
+			leftMotor.setMicrostep((uint8_t)abs(value));
+			rightMotor.setMicrostep((uint8_t)abs(value)); break;
 		default:
 			Serial.print("STOP ");
 			speedL=0;
@@ -322,9 +328,9 @@ void loop() {
 
 	if (millis()-prevSec>2000) {
 		prevSec=millis();
-		Serial.print("Target L:");Serial.print(leftMotor.getTargetSpeed());Serial.print(" R:");Serial.print(rightMotor.getTargetSpeed());
-		Serial.print(" Current L:");Serial.print(leftMotor.getSpeed());Serial.print(" R:");Serial.print(rightMotor.getSpeed());
-		Serial.print(" Average L:");Serial.print(leftMotor.getAverageSpeed());Serial.print(" R:");Serial.print(rightMotor.getAverageSpeed());
+		Serial.print("T L:");Serial.print(leftMotor.getTargetSpeed());Serial.print(" R:");Serial.print(rightMotor.getTargetSpeed());
+		Serial.print(" C L:");Serial.print(leftMotor.getSpeed());Serial.print(" R:");Serial.print(rightMotor.getSpeed());
+		Serial.print(" A L:");Serial.print(leftMotor.getAverageSpeed());Serial.print(" R:");Serial.print(rightMotor.getAverageSpeed());
 		Serial.println();
 	}
 
