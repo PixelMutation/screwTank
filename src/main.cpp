@@ -18,7 +18,8 @@ enum microstep{
 	SIXTEENTH = 16
 };
 
-enum commandType{
+enum commandType {
+	TURN      = 'X', // 
 	FORWARD   = 'W', // drive forward
 	BACKWARD  = 'S', // drive back
 	LEFT      = 'A', // roll left
@@ -29,7 +30,7 @@ enum commandType{
 	TURN_L    = 'J', // turn right while moving
 	L_FORWARD = '[', // set left side speed (tank controls)
 	R_FORWARD = ']', // set right side speed (tank controls)
-	STOP      = 'X', // any unrecognised command will stop
+	STOP      = '#', // any unrecognised command will stop
 	SET_SPEED = ':', // change max speed
 	SET_ACCEL = '@', // change accel
 	SET_MICROSTEP = 'M' // change microstep value
@@ -39,11 +40,11 @@ enum commandType{
 
 class continuousStepper{
 	int16_t speed=0;
-	uint16_t accel=50;
+	uint16_t accel=150;
 	int16_t targetSpeed=0;
 	unsigned long prevStepTime_us=0;
 	unsigned long prevAccelTime_ms=0;
-	int16_t maxSpeed=200;
+	int16_t maxSpeed=300;
 	microstep stepsize;
 	bool invert;
 	bool stepState=0;
@@ -253,6 +254,18 @@ void receiveCommands () {
 		String val = command.substring(1,command.length());
 		int16_t value=val.toInt();
 		switch(type) {
+		case TURN: // rotate inwards to drive forward
+			value=constrain(value,-255,255);
+			Serial.print("TURN ");
+			if (value>0) {
+				offsetR=-value;
+			} else if (value <0) {
+				offsetL=-value;
+			} else {
+				offsetL=0;
+				offsetR=0;
+			}
+			break;
 		case FORWARD: // rotate inwards to drive forward
 			value=constrain(value,-255,255);
 			Serial.print("FORWARD ");
