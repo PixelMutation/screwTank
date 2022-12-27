@@ -96,17 +96,19 @@ public:
 	void stop() {targetSpeed=0;};
 
 	// accel in step/s^2
-	void setAccel(uint16_t Accel) {
+	int16_t setAccel(uint16_t Accel) {
 		accel=constrain(Accel,0,MAX_ACCEL);
+		return (int16_t)accel;
 	}
 
-	void setMicrostep(uint8_t microsteps) {
+	int16_t setMicrostep(int16_t microsteps) {
+		// Serial.print("mc ");Serial.print(microsteps);
 		switch(microsteps) {
-			case 1: stepsize=FULL;
-			case 2: stepsize=HALF;
-			case 4: stepsize=QUARTER;
-			case 8: stepsize=EIGHTH;
-			case 16: stepsize=SIXTEENTH;
+			case 1: stepsize=FULL;break;
+			case 2: stepsize=HALF;break;
+			case 4: stepsize=QUARTER;break;
+			case 8: stepsize=EIGHTH;break;
+			case 16: stepsize=SIXTEENTH;break;
 			default: stepsize=QUARTER;
 		}
 		switch (stepsize) {
@@ -135,15 +137,18 @@ public:
 			digitalWrite(MS2,LOW);
 			digitalWrite(MS3,LOW);
 		}
+		return (int16_t)stepsize;
 	}
-	void setMaxSpeed(int16_t stepsPerSecond){
+	int16_t setMaxSpeed(int16_t stepsPerSecond){
 		maxSpeed=constrain(stepsPerSecond,0,MAX_SPEED); // 
+		return maxSpeed;
 	}
-	void setSpeed(int16_t Speed) {
+	int16_t setSpeed(int16_t Speed) {
 		Speed=constrain(Speed,-255,255);
 		targetSpeed=map(Speed,-255,255,-maxSpeed,maxSpeed);
 		// targetSpeed=((float)(maxSpeed*stepsize)/255)*Speed;
 		// Serial.println(targetSpeed);
+		return Speed;
 	};
 	int16_t getAverageSpeed() { // calculated using steps/time since last call of this function
 		uint16_t averagespeed = (stepCount/2)/((millis()-prevSpeedMeasureTime)/1000);
@@ -152,21 +157,21 @@ public:
 		return averagespeed;
 	}
 	int16_t getSpeed() {return speed;};
-	int16_t getTargetSpeed() {return targetSpeed;};
+	int16_t getTargetSpeed() {return targetSpeed*stepsize;};
 
 	void run() {
 		// calculate new speed using accel parameter
 		if (millis()-prevAccelTime_ms>1000/accel) {
 			prevAccelTime_ms=millis();
-			if (speed<targetSpeed*stepsize) {
+			if (speed<(targetSpeed*stepsize)) {
 				speed+=stepsize;
-				if (speed>targetSpeed*stepsize) {
+				if (speed>(targetSpeed*stepsize)) {
 					speed=targetSpeed*stepsize;
 				}
 			}
-			else if (speed>targetSpeed*stepsize) {
+			else if (speed>(targetSpeed*stepsize)) {
 				speed-=stepsize;
-				if (speed<targetSpeed*stepsize) {
+				if (speed<(targetSpeed*stepsize)) {
 					speed=targetSpeed*stepsize;
 				}
 			}
@@ -228,6 +233,17 @@ int16_t speedR=0;
 int16_t offsetL=0;
 int16_t offsetR=0;
 
+void stop(bool print=true) {
+	speedL=0;
+	speedR=0;
+	offsetL=0;
+	offsetR=0;
+	leftMotor.off();
+	rightMotor.off();
+	if (print) 
+		Serial.print("STOP ");
+}
+
 void receiveCommands () {
 	if (Serial.available()) {
 		String command = Serial.readStringUntil('\n');
@@ -236,65 +252,72 @@ void receiveCommands () {
 		// Serial.println(type);
 		String val = command.substring(1,command.length());
 		int16_t value=val.toInt();
-		value=constrain(value,-255,255);
 		switch(type) {
 		case FORWARD: // rotate inwards to drive forward
+			value=constrain(value,-255,255);
 			Serial.print("FORWARD ");
 			speedL=value;
 			speedR=value; break;
 		case BACKWARD: // rotate outwards to drive backward
+			value=constrain(value,-255,255);
 			Serial.print("BACKWARD ");
 			speedL=-value;
 			speedR=-value; break;
 		case LEFT: // turn both anticlockwise to roll left
+			value=constrain(value,-255,255);
 			Serial.print("LEFT ");
 			speedL=-value;
 			speedR=value; break;
 		case RIGHT: // turn both clockwise to roll right
+			value=constrain(value,-255,255);
 			Serial.print("RIGHT ");
 			speedL=value;
 			speedR=-value; break;
 		case PIVOT_R: // turn by reducing speed on right side 
+			value=constrain(value,-255,255);
 			Serial.print("PIVOT_R ");
 			speedR=-value; 
 			speedL=0;break;
 		case PIVOT_L: // turn by reducing speed on left side 
+			value=constrain(value,-255,255);
 			Serial.print("PIVOT_L ");
 			speedL=-value; 
 			speedR=0; break;
 		case TURN_R: // turn by reducing speed on right side 
+			value=constrain(value,-255,255);
 			Serial.print("TURN_R ");
 			offsetR=-value;
 			break;
 		case TURN_L: // turn by reducing speed on left side 
+			value=constrain(value,-255,255);
 			Serial.print("TURN_L ");
 			offsetL=-value; break;
 		case L_FORWARD: // set speed of left side
+			value=constrain(value,-255,255);
 			Serial.print("L_FORWARD ");
 			speedL=value; break;
 		case R_FORWARD: // set speed of right side
+			value=constrain(value,-255,255);
 			Serial.print("R_FORWARD ");
 			speedR=value; break;
 		case SET_SPEED: // set speed of right side
+			stop(); 
 			Serial.print("SET_SPEED ");
-			leftMotor.setSpeed(abs(value));
-			rightMotor.setSpeed(abs(value)); break;
+			value=leftMotor.setMaxSpeed(value);
+			value=rightMotor.setMaxSpeed(value); break;
 		case SET_ACCEL: // set accel of right side
+			stop(); 
 			Serial.print("SET_ACCEL ");
-			leftMotor.setAccel((uint16_t)value);
-			rightMotor.setAccel((uint16_t)value); break;
+			value=leftMotor.setAccel((uint16_t)value);
+			value=rightMotor.setAccel((uint16_t)value); break;
 		case SET_MICROSTEP: // set speed of right side
+			stop();
 			Serial.print("SET_MICROSTEP ");
-			leftMotor.setMicrostep((uint8_t)abs(value));
-			rightMotor.setMicrostep((uint8_t)abs(value)); break;
+			value=leftMotor.setMicrostep(value);
+			value=rightMotor.setMicrostep(value); break;
 		default:
-			Serial.print("STOP ");
-			speedL=0;
-			speedR=0;
-			offsetL=0;
-			offsetR=0;
-			leftMotor.stop();
-			rightMotor.stop();
+			stop();
+			value=0;
 		}
 		// Apply speed with offsets
 		leftMotor.setSpeed(speedL+offsetL);
@@ -308,12 +331,7 @@ long prevSec=0;
 
 void loop() {
 	if (digitalRead(13)==0) { // if no power available, stop motors and set speed to zero
-		speedL=0;
-		speedR=0;
-		offsetL=0;
-		offsetR=0;
-		leftMotor.off();
-		rightMotor.off();
+		stop(false);
 	} 
 	receiveCommands();
 	leftMotor.run();
