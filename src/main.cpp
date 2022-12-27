@@ -259,8 +259,10 @@ void receiveCommands () {
 			Serial.print("TURN ");
 			if (value>0) {
 				offsetR=-value;
+				offsetL=0;
 			} else if (value <0) {
 				offsetL=-value;
+				offsetR=0;
 			} else {
 				offsetL=0;
 				offsetR=0;
