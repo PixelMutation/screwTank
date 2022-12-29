@@ -19,26 +19,25 @@ enum microstep{
 };
 
 enum commandType {
-	TURN      = 'X', // 
-	FORWARD   = 'W', // drive forward
-	BACKWARD  = 'S', // drive back
-	LEFT      = 'A', // roll left
-	RIGHT     = 'D', // roll right
-	PIVOT_R   = 'E', // pivot to the right while stationary
-	PIVOT_L   = 'Q', // pivot to the left while stationary
-	TURN_R    = 'L', // turn left while moving
-	TURN_L    = 'J', // turn right while moving
-	L_FORWARD = '[', // set left side speed (tank controls)
-	R_FORWARD = ']', // set right side speed (tank controls)
-	STOP      = '#', // any unrecognised command will stop
-	SET_SPEED = ':', // change max speed
-	SET_ACCEL = '@', // change accel
-	SET_MICROSTEP = 'M' // change microstep value
+	// Movement Commands
+	L_SPEED = '[', // set left side speed (tank controls)
+	R_SPEED = ']', // set right side speed (tank controls)
+	L_STOP = ',', // instantly stop
+	R_STOP = '.',
+	OFF = '#', // any unrecognised command will power off and set targets to zero
+	// Configuration
+	SET_MAX_SPEED = 'S', // change max speed
+	SET_MAX_ACCEL = 'A', // change accel
+	SET_MICROSTEP = 'M', // change microstep value
+	// Watchdog
+	SET_MAX_PING = 'O', // if -1, no ping required. otherwise after this interval with no ping, turn off
+	PING = 'P' // returns a PING when called. append the target time between pings to get the latency
 };
 
 
 
 class continuousStepper{
+	unsigned long halfStepPeriod=1000000;
 	int16_t speed=0;
 	uint16_t accel=150;
 	int16_t targetSpeed=0;
@@ -192,13 +191,15 @@ public:
 					digitalWrite(DIR,HIGH);
 				}
 			}
+			// Calculate new step duration
+			if (speed!=0)
+				halfStepPeriod=(unsigned long)1000000/(abs(speed)*2)
 		}
 		
 
-		
 		// only toggle step pin after every half period at the set speed
 		if (speed!=0) {
-			if (timeMicros-prevStepTime_us>(unsigned long)1000000/(abs(speed)*2)) {
+			if (timeMicros-prevStepTime_us>halfStepPeriod) {
 				prevStepTime_us=timeMicros;
 				stepState=!stepState;
 				digitalWrite(STP,stepState);
@@ -234,6 +235,9 @@ int16_t speedR=0;
 int16_t offsetL=0;
 int16_t offsetR=0;
 
+unsigned long lastPing=0;
+int16_t maxPing=-1;
+
 void stop(bool print=true) {
 	speedL=0;
 	speedR=0;
@@ -254,85 +258,45 @@ void receiveCommands () {
 		String val = command.substring(1,command.length());
 		int16_t value=val.toInt();
 		switch(type) {
-		case TURN: // rotate inwards to drive forward
-			value=constrain(value,-255,255);
-			Serial.print("TURN ");
-			if (value>0) {
-				offsetR=-value;
-				offsetL=0;
-			} else if (value <0) {
-				offsetL=value;
-				offsetR=0;
-			} else {
-				offsetL=0;
-				offsetR=0;
-			}
-			break;
-		case FORWARD: // rotate inwards to drive forward
-			value=constrain(value,-255,255);
-			Serial.print("FORWARD ");
-			speedL=value;
-			speedR=value; break;
-		case BACKWARD: // rotate outwards to drive backward
-			value=constrain(value,-255,255);
-			Serial.print("BACKWARD ");
-			speedL=-value;
-			speedR=-value; break;
-		case LEFT: // turn both anticlockwise to roll left
-			value=constrain(value,-255,255);
-			Serial.print("LEFT ");
-			speedL=-value;
-			speedR=value; break;
-		case RIGHT: // turn both clockwise to roll right
-			value=constrain(value,-255,255);
-			Serial.print("RIGHT ");
-			speedL=value;
-			speedR=-value; break;
-		case PIVOT_R: // turn by reducing speed on right side 
-			value=constrain(value,-255,255);
-			Serial.print("PIVOT_R ");
-			speedR=-value; 
-			speedL=0;break;
-		case PIVOT_L: // turn by reducing speed on left side 
-			value=constrain(value,-255,255);
-			Serial.print("PIVOT_L ");
-			speedL=-value; 
-			speedR=0; break;
-		case TURN_R: // turn by reducing speed on right side 
-			value=constrain(value,-255,255);
-			Serial.print("TURN_R ");
-			offsetR=-value;
-			break;
-		case TURN_L: // turn by reducing speed on left side 
-			value=constrain(value,-255,255);
-			Serial.print("TURN_L ");
-			offsetL=-value; break;
-		case L_FORWARD: // set speed of left side
-			value=constrain(value,-255,255);
-			Serial.print("L_FORWARD ");
-			speedL=value; break;
-		case R_FORWARD: // set speed of right side
-			value=constrain(value,-255,255);
-			Serial.print("R_FORWARD ");
-			speedR=value; break;
-		case SET_SPEED: // set speed of right side
-			stop(); 
-			Serial.print("SET_SPEED ");
-			value=leftMotor.setMaxSpeed(value);
-			value=rightMotor.setMaxSpeed(value); break;
-		case SET_ACCEL: // set accel of right side
-			stop(); 
-			Serial.print("SET_ACCEL ");
-			value=leftMotor.setAccel((uint16_t)value);
-			value=rightMotor.setAccel((uint16_t)value); break;
-		case SET_MICROSTEP: // set speed of right side
-			stop();
-			Serial.print("SET_MICROSTEP ");
-			value=leftMotor.setMicrostep(value);
-			value=rightMotor.setMicrostep(value); break;
-		default:
-			stop();
-			value=0;
+		// Movement
+			case L_SPEED: // set speed of left side
+				value=constrain(value,-255,255);
+				Serial.print("L_SPEED ");
+				speedL=value; break;
+			case R_SPEED: // set speed of right side
+				value=constrain(value,-255,255);
+				Serial.print("R_SPEED ");
+				speedR=value; break;
+		// Configuration
+			case SET_MAX_SPEED: // set speed of right side
+				stop(); 
+				Serial.print("SET_MAX_SPEED ");
+				value=leftMotor.setMaxSpeed(value);
+				value=rightMotor.setMaxSpeed(value); 
+				break;
+			case SET_MAX_ACCEL: // set accel of right side
+				stop(); 
+				Serial.print("SET_MAX_ACCEL ");
+				value=leftMotor.setAccel((uint16_t)value);
+				value=rightMotor.setAccel((uint16_t)value); 
+				break;
+			case SET_MICROSTEP: // set speed of right side
+				stop();
+				Serial.print("SET_MICROSTEP ");
+				value=leftMotor.setMicrostep(value);
+				value=rightMotor.setMicrostep(value); 
+				break;
+			case SET_PING: // max time between pings before shutdown
+				Serial.print("SET_MAX_PING "); 
+				maxPing=value; 
+				break;
+			case PING:
+				Serial.print("PING "); Serial.print(millis()-lastPing-value);
+				lastPing=millis();
+				break;
+			default:
+				stop();
+				value=0;
 		}
 		// Apply speed with offsets
 		
@@ -346,36 +310,43 @@ void receiveCommands () {
 			leftMotor.on();
 			rightMotor.on();
 		}
-
-		Serial.println(value);
+		// Print the value appended to the command (if present)
+		if (command.length()>1)
+			Serial.println(value);
 	}
 }
 long prevPrint=0;
-long prevSec=0;
 
 void loop() {
+	// Power check
 	if (digitalRead(13)==0) { // if no power available, stop motors and set speed to zero
 		stop(false);
+
 	} 
-	receiveCommands();
-	unsigned long currentMicros=micros();
-	
+	// Process commands
+	receiveCommands(); // read from serial
+
+	// Connection watchdog
+	if (maxPing!=-1){
+		if(millis()-lastPing>(unsigned long)maxPing){
+			stop(false);
+		}
+	}
+	// Run motors
+	unsigned long currentMicros=micros(); // both motors must be given the same time
 	leftMotor.run(currentMicros);
 	rightMotor.run(currentMicros);
+
+	// Print status
 	if (millis()-prevPrint>1000) {
 		prevPrint=millis();
-		// Serial.print(">leftMotor:");Serial.println(leftMotor.getSpeed());
-		// Serial.print(">rightMotor:");Serial.println(rightMotor.getSpeed());
-		// Serial.print(">leftMotorTarget:");Serial.println(leftMotor.getTargetSpeed());
-		// Serial.print(">rightMotorTarget:");Serial.println(rightMotor.getTargetSpeed());
-	}
-
-	if (millis()-prevSec>2000) {
-		prevSec=millis();
-		Serial.print("T L:");Serial.print(leftMotor.getTargetSpeed());Serial.print(" R:");Serial.print(rightMotor.getTargetSpeed());
-		Serial.print(" C L:");Serial.print(leftMotor.getSpeed());Serial.print(" R:");Serial.print(rightMotor.getSpeed());
-		Serial.print(" A L:");Serial.print(leftMotor.getAverageSpeed());Serial.print(" R:");Serial.print(rightMotor.getAverageSpeed());
+		Serial.print("STATUS ");Serial.print(" P: ");Serial.print(!digitalRead(13));
+		Serial.print(" TL:");Serial.print(leftMotor.getTargetSpeed());Serial.print("TR:");Serial.print(rightMotor.getTargetSpeed());
+		Serial.print(" CL:");Serial.print(leftMotor.getSpeed());Serial.print("CR:");Serial.print(rightMotor.getSpeed());
+		Serial.print(" AL:");Serial.print(leftMotor.getAverageSpeed());Serial.print("AR:");Serial.print(rightMotor.getAverageSpeed());
+		
 		Serial.println();
 	}
+
 
 }
