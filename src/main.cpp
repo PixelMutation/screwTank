@@ -4,9 +4,9 @@
 // (inwards meaning clockwise on left, anticlockwise on right)
 #define THREADS_INWARDS true
 // absolute max speed
-#define MAX_SPEED 500
+#define MAX_SPEED 4000
 // absolute max accel
-#define MAX_ACCEL 500
+#define MAX_ACCEL 2000
 
 #define BAUD 9600
 
@@ -160,7 +160,7 @@ public:
 	int16_t getSpeed() {return speed;};
 	int16_t getTargetSpeed() {return targetSpeed*stepsize;};
 
-	void run() {
+	void run(unsigned long timeMicros) {
 		// calculate new speed using accel parameter
 		if (millis()-prevAccelTime_ms>1000/accel) {
 			prevAccelTime_ms=millis();
@@ -198,8 +198,8 @@ public:
 		
 		// only toggle step pin after every half period at the set speed
 		if (speed!=0) {
-			if (micros()-prevStepTime_us>(unsigned long)1000000/(abs(speed)*2)) {
-				prevStepTime_us=micros();
+			if (timeMicros-prevStepTime_us>(unsigned long)1000000/(abs(speed)*2)) {
+				prevStepTime_us=timeMicros;
 				stepState=!stepState;
 				digitalWrite(STP,stepState);
 				stepCount+=direction;
@@ -207,11 +207,11 @@ public:
 		}
 
 		// power saving
-		if (speed==0 && targetSpeed==0) {
-			off();
-		} else {
-			on();
-		}
+		// if (speed==0 && targetSpeed==0) {
+		// 	off();
+		// } else {
+		// 	on();
+		// }
 	};
 
 };
@@ -261,7 +261,7 @@ void receiveCommands () {
 				offsetR=-value;
 				offsetL=0;
 			} else if (value <0) {
-				offsetL=-value;
+				offsetL=value;
 				offsetR=0;
 			} else {
 				offsetL=0;
@@ -335,8 +335,17 @@ void receiveCommands () {
 			value=0;
 		}
 		// Apply speed with offsets
+		
 		leftMotor.setSpeed(speedL+offsetL);
 		rightMotor.setSpeed(speedR+offsetR);
+
+		if (rightMotor.getTargetSpeed()==0 && leftMotor.getTargetSpeed()==0)  {
+			leftMotor.off();
+			rightMotor.off();
+		} else {
+			leftMotor.on();
+			rightMotor.on();
+		}
 
 		Serial.println(value);
 	}
@@ -349,8 +358,10 @@ void loop() {
 		stop(false);
 	} 
 	receiveCommands();
-	leftMotor.run();
-	rightMotor.run();
+	unsigned long currentMicros=micros();
+	
+	leftMotor.run(currentMicros);
+	rightMotor.run(currentMicros);
 	if (millis()-prevPrint>1000) {
 		prevPrint=millis();
 		// Serial.print(">leftMotor:");Serial.println(leftMotor.getSpeed());
