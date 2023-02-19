@@ -227,6 +227,7 @@ void setup() {
 	leftMotor.on();
 	rightMotor.init(QUARTER);
 	rightMotor.on();
+	Serial.println("Initialised");
 }
 
 int16_t speedL=0;
@@ -253,6 +254,7 @@ void receiveCommands () {
 		// Serial.println(type);
 		String val = command.substring(1,command.length());
 		int16_t value=val.toInt();
+		Serial.print("ACK: ");
 		switch(type) {
 		case TURN: // rotate inwards to drive forward
 			value=constrain(value,-255,255);
@@ -353,10 +355,21 @@ void receiveCommands () {
 long prevPrint=0;
 long prevSec=0;
 
+int prevPowerState=-1;
+
 void loop() {
 	if (digitalRead(13)==0) { // if no power available, stop motors and set speed to zero
+		if (prevPowerState!=0) {
+			prevPowerState=0;
+			Serial.println("Motor power off, disabling drivers, set target speed to zero");
+		}
 		stop(false);
-	} 
+	} else {
+		if (prevPowerState!=1) {
+			prevPowerState=1;
+			Serial.println("Motor power on, enabling drivers");
+		}
+	}
 	receiveCommands();
 	unsigned long currentMicros=micros();
 	
