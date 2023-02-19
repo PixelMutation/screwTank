@@ -243,7 +243,7 @@ void stop(bool print=true) {
 	leftMotor.off();
 	rightMotor.off();
 	if (print) 
-		Serial.print("STOP ");
+		Serial.print("INFO: Stopping motors, set targets to zero");
 }
 
 void receiveCommands () {
@@ -254,7 +254,7 @@ void receiveCommands () {
 		// Serial.println(type);
 		String val = command.substring(1,command.length());
 		int16_t value=val.toInt();
-		Serial.print("ACKN: ");
+		Serial.print("ACK: ");
 		switch(type) {
 		case TURN: // rotate inwards to drive forward
 			value=constrain(value,-255,255);
@@ -361,13 +361,13 @@ void loop() {
 	if (digitalRead(13)==0) { // if no power available, stop motors and set speed to zero
 		if (prevPowerState!=0) {
 			prevPowerState=0;
-			Serial.println("WARN: Motor power off, disabling drivers, set target speed to zero");
+			Serial.println("WARN: Motor power off");
+			stop();
 		}
-		stop(false);
 	} else {
 		if (prevPowerState!=1) {
 			prevPowerState=1;
-			Serial.println("INFO: Motor power on, enabling drivers");
+			Serial.println("INFO: Motor power on");
 		}
 	}
 	receiveCommands();
@@ -386,7 +386,7 @@ void loop() {
 
 	if (millis()-prevSec>1000 && digitalRead(13)==1) {
 		prevSec=millis();
-		Serial.print("STAT: T L");Serial.print(leftMotor.getTargetSpeed());Serial.print(" R");Serial.print(rightMotor.getTargetSpeed());
+		Serial.print("STATUS: T L");Serial.print(leftMotor.getTargetSpeed());Serial.print(" R");Serial.print(rightMotor.getTargetSpeed());
 		Serial.print(" C L");Serial.print(leftMotor.getSpeed());Serial.print(" R");Serial.print(rightMotor.getSpeed());
 		Serial.print(" A L");Serial.print(leftMotor.getAverageSpeed());Serial.print(" R");Serial.print(rightMotor.getAverageSpeed());
 		Serial.println();
