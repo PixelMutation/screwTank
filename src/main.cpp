@@ -227,7 +227,7 @@ void setup() {
 	leftMotor.on();
 	rightMotor.init(QUARTER);
 	rightMotor.on();
-	Serial.println("Initialised");
+	Serial.println("INFO: Initialised");
 }
 
 int16_t speedL=0;
@@ -254,7 +254,7 @@ void receiveCommands () {
 		// Serial.println(type);
 		String val = command.substring(1,command.length());
 		int16_t value=val.toInt();
-		Serial.print("ACK: ");
+		Serial.print("ACKN: ");
 		switch(type) {
 		case TURN: // rotate inwards to drive forward
 			value=constrain(value,-255,255);
@@ -361,13 +361,13 @@ void loop() {
 	if (digitalRead(13)==0) { // if no power available, stop motors and set speed to zero
 		if (prevPowerState!=0) {
 			prevPowerState=0;
-			Serial.println("Motor power off, disabling drivers, set target speed to zero");
+			Serial.println("WARN: Motor power off, disabling drivers, set target speed to zero");
 		}
 		stop(false);
 	} else {
 		if (prevPowerState!=1) {
 			prevPowerState=1;
-			Serial.println("Motor power on, enabling drivers");
+			Serial.println("INFO: Motor power on, enabling drivers");
 		}
 	}
 	receiveCommands();
@@ -375,17 +375,18 @@ void loop() {
 	
 	leftMotor.run(currentMicros);
 	rightMotor.run(currentMicros);
-	if (millis()-prevPrint>1000) {
-		prevPrint=millis();
-		// Serial.print(">leftMotor:");Serial.println(leftMotor.getSpeed());
-		// Serial.print(">rightMotor:");Serial.println(rightMotor.getSpeed());
-		// Serial.print(">leftMotorTarget:");Serial.println(leftMotor.getTargetSpeed());
-		// Serial.print(">rightMotorTarget:");Serial.println(rightMotor.getTargetSpeed());
-	}
 
-	if (millis()-prevSec>2000) {
+	// if (millis()-prevPrint>1000) {
+	// 	prevPrint=millis();
+	// 	// Serial.print(">leftMotor:");Serial.println(leftMotor.getSpeed());
+	// 	// Serial.print(">rightMotor:");Serial.println(rightMotor.getSpeed());
+	// 	// Serial.print(">leftMotorTarget:");Serial.println(leftMotor.getTargetSpeed());
+	// 	// Serial.print(">rightMotorTarget:");Serial.println(rightMotor.getTargetSpeed());
+	// }
+
+	if (millis()-prevSec>1000 && digitalRead(13)==1) {
 		prevSec=millis();
-		Serial.print("T L:");Serial.print(leftMotor.getTargetSpeed());Serial.print(" R:");Serial.print(rightMotor.getTargetSpeed());
+		Serial.print("STAT: T L:");Serial.print(leftMotor.getTargetSpeed());Serial.print(" R:");Serial.print(rightMotor.getTargetSpeed());
 		Serial.print(" C L:");Serial.print(leftMotor.getSpeed());Serial.print(" R:");Serial.print(rightMotor.getSpeed());
 		Serial.print(" A L:");Serial.print(leftMotor.getAverageSpeed());Serial.print(" R:");Serial.print(rightMotor.getAverageSpeed());
 		Serial.println();
