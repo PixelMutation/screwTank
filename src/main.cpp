@@ -261,7 +261,7 @@ void receiveCommands () {
 			commsConnected=true;
 			Serial.println("INFO: Connected");
 		}
-		
+		lastPing=millis(); // any message resets the timer
 		String command = Serial.readStringUntil('\n');
 		command.toUpperCase();
 		byte type=(byte)command[0];
@@ -304,11 +304,11 @@ void receiveCommands () {
 				break;
 			case PING:
 				Serial.print("ACK: PING "); Serial.print(millis()-lastPing);
-				lastPing=millis();
 				break;
 			case TEST:
 				break;
 			default:
+				Serial.print("ERROR: Unknown command ");
 				stop();
 				value=0;
 		}
