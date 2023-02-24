@@ -8,7 +8,7 @@
 // absolute max accel
 #define MAX_ACCEL 2000
 
-#define BAUD 19200
+#define BAUD 9600
 
 enum microstep{
 	FULL      = 1,
@@ -241,7 +241,7 @@ int16_t offsetL=0;
 int16_t offsetR=0;
 
 unsigned long lastPing=0;
-int16_t maxPing=1000;
+int16_t maxPing=5000;
 
 void stop(bool print=true) {
 	speedL=0;
@@ -253,51 +253,57 @@ void stop(bool print=true) {
 	if (print) 
 		Serial.println("INFO: Stopping motors, set targets to zero");
 }
+bool commsConnected=false;
 
 void receiveCommands () {
 	if (Serial.available()) {
+		if (commsConnected==false) {
+			commsConnected=true;
+			Serial.println("INFO: Connected");
+		}
+		
 		String command = Serial.readStringUntil('\n');
 		command.toUpperCase();
 		byte type=(byte)command[0];
 		// Serial.println(type);
 		String val = command.substring(1,command.length());
 		int16_t value=val.toInt();
-		Serial.print("ACK: ");
+		// Serial.print("ACK: ");
 		switch(type) {
 		// Movement
 			case L_SPEED: // set speed of left side
 				value=constrain(value,-255,255);
-				Serial.print("L_SPEED ");
+				Serial.print("ACK: L_SPEED ");
 				speedL=value; break;
 			case R_SPEED: // set speed of right side
 				value=constrain(value,-255,255);
-				Serial.print("R_SPEED ");
+				Serial.print("ACK: R_SPEED ");
 				speedR=value; break;
 		// Configuration
 			case SET_MAX_SPEED: // set speed of right side
 				stop(); 
-				Serial.print("SET_MAX_SPEED ");
+				Serial.print("ACK: SET_MAX_SPEED ");
 				value=leftMotor.setMaxSpeed(value);
 				value=rightMotor.setMaxSpeed(value); 
 				break;
 			case SET_MAX_ACCEL: // set accel of right side
 				stop(); 
-				Serial.print("SET_MAX_ACCEL ");
+				Serial.print("ACK: SET_MAX_ACCEL ");
 				value=leftMotor.setAccel((uint16_t)value);
 				value=rightMotor.setAccel((uint16_t)value); 
 				break;
 			case SET_MICROSTEP: // set speed of right side
 				stop();
-				Serial.print("SET_MICROSTEP ");
+				Serial.print("ACK: SET_MICROSTEP ");
 				value=leftMotor.setMicrostep(value);
 				value=rightMotor.setMicrostep(value); 
 				break;
 			case SET_MAX_PING: // max time between pings before shutdown
-				Serial.print("SET_MAX_PING "); 
+				Serial.print("ACK: SET_MAX_PING "); 
 				maxPing=value; 
 				break;
 			case PING:
-				Serial.print("PING "); Serial.print(millis()-lastPing-value);
+				Serial.print("ACK: PING"); Serial.print(millis()-lastPing-(unsigned long)value);
 				lastPing=millis();
 				break;
 			case TEST:
@@ -325,6 +331,7 @@ void receiveCommands () {
 }
 long prevPrint=0;
 int prevPowerState=-1;
+
 void loop() {
 	// Power check
 	if (digitalRead(13)==0) { // if no power available, stop motors and set speed to zero
@@ -344,8 +351,12 @@ void loop() {
 
 	// Connection watchdog
 	if (maxPing!=-1){
-		if(millis()-lastPing>(unsigned long)maxPing){
-			stop(false);
+		if (commsConnected) {
+			commsConnected=false;
+			if(millis()-lastPing>(unsigned long)maxPing){
+				Serial.println("WARN: Missed keepalive ping, stopping");
+				stop();
+			}
 		}
 	}
 	// Run motors
