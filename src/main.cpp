@@ -308,8 +308,8 @@ void receiveCommands () {
 			case TEST:
 				break;
 			default:
-				Serial.print("ERROR: Unknown command ");
-				stop();
+				Serial.print("ERROR: Unknown command, stopping ");
+				stop(false);
 				value=0;
 		}
 		// Apply speed with offsets
