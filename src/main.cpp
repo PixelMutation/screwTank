@@ -241,7 +241,7 @@ int16_t offsetL=0;
 int16_t offsetR=0;
 
 unsigned long lastPing=0;
-int16_t maxPing=-1;
+int16_t maxPing=1000;
 
 void stop(bool print=true) {
 	speedL=0;
@@ -251,7 +251,7 @@ void stop(bool print=true) {
 	leftMotor.off();
 	rightMotor.off();
 	if (print) 
-		Serial.print("STOP ");
+		Serial.println("INFO: Stopping motors, set targets to zero");
 }
 
 void receiveCommands () {
@@ -262,6 +262,7 @@ void receiveCommands () {
 		// Serial.println(type);
 		String val = command.substring(1,command.length());
 		int16_t value=val.toInt();
+		Serial.print("ACK: ");
 		switch(type) {
 		// Movement
 			case L_SPEED: // set speed of left side
@@ -323,13 +324,21 @@ void receiveCommands () {
 	}
 }
 long prevPrint=0;
-
+int prevPowerState=-1;
 void loop() {
 	// Power check
 	if (digitalRead(13)==0) { // if no power available, stop motors and set speed to zero
-		stop(false);
-
-	} 
+		if (prevPowerState!=0) {
+			prevPowerState=0;
+			Serial.println("WARN: Motor power off");
+			stop();
+		}
+	} else {
+		if (prevPowerState!=1) {
+			prevPowerState=1;
+			Serial.println("INFO: Motor power on");
+		}
+	}
 	// Process commands
 	receiveCommands(); // read from serial
 
@@ -345,13 +354,11 @@ void loop() {
 	rightMotor.run(currentMicros);
 
 	// Print status
-	if (millis()-prevPrint>1000) {
+	if (millis()-prevPrint>1000 && digitalRead(13)==1) {
 		prevPrint=millis();
-		Serial.print("STATUS ");Serial.print(" P: ");Serial.print(!digitalRead(13));
-		Serial.print(" TL:");Serial.print(leftMotor.getTargetSpeed());Serial.print("TR:");Serial.print(rightMotor.getTargetSpeed());
-		// Serial.print(" CL:");Serial.print(leftMotor.getSpeed());Serial.print("CR:");Serial.print(rightMotor.getSpeed());
-		Serial.print(" AL:");Serial.print(leftMotor.getAverageSpeed());Serial.print("AR:");Serial.print(rightMotor.getAverageSpeed());
-		
+		Serial.print("STATUS: T L");Serial.print(leftMotor.getTargetSpeed());Serial.print(" R");Serial.print(rightMotor.getTargetSpeed());
+		Serial.print(" C L");Serial.print(leftMotor.getSpeed());Serial.print(" R");Serial.print(rightMotor.getSpeed());
+		Serial.print(" A L");Serial.print(leftMotor.getAverageSpeed());Serial.print(" R");Serial.print(rightMotor.getAverageSpeed());
 		Serial.println();
 	}
 
