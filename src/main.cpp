@@ -356,7 +356,7 @@ void loop() {
 			if(millis()-lastPing>(unsigned long)maxPing){
 				commsConnected=false;
 				Serial.println("WARN: Missed keepalive ping, stopping");
-				stop();
+				stop(false);
 			}
 		}
 	}
