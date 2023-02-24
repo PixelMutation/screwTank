@@ -326,7 +326,8 @@ void receiveCommands () {
 		}
 		// Print the value appended to the command (if present)
 		if (command.length()>1)
-			Serial.println(value);
+			Serial.print(value);
+		Serial.println();
 	}
 }
 long prevPrint=0;
