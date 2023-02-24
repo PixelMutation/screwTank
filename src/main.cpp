@@ -22,8 +22,6 @@ enum commandType {
 	// Movement Commands
 	L_SPEED = '[', // set left side speed (tank controls)
 	R_SPEED = ']', // set right side speed (tank controls)
-	L_STOP = ',', // instantly stop
-	R_STOP = '.',
 	OFF = '#', // any unrecognised command will power off and set targets to zero
 	// Configuration
 	SET_MAX_SPEED = 'S', // change max speed
@@ -31,13 +29,15 @@ enum commandType {
 	SET_MICROSTEP = 'M', // change microstep value
 	// Watchdog
 	SET_MAX_PING = 'O', // if -1, no ping required. otherwise after this interval with no ping, turn off
-	PING = 'P' // returns a PING when called. append the target time between pings to get the latency
+	PING = 'P', // returns a PING when called. append the target time between pings to get the latency
+	TEST = 'T' // does nothing, just for testing serial comms
 };
 
 
 
 class continuousStepper{
 	unsigned long halfStepPeriod=1000000;
+	const unsigned long accelInterval=100; // time in ms between accel changes
 	int16_t speed=0;
 	uint16_t accel=150;
 	int16_t targetSpeed=0;
@@ -161,18 +161,23 @@ public:
 
 	void run(unsigned long timeMicros) {
 		// calculate new speed using accel parameter
-		if (millis()-prevAccelTime_ms>1000/accel) {
+		if (millis()-prevAccelTime_ms>accelInterval) {
 			prevAccelTime_ms=millis();
-			if (speed<(targetSpeed*stepsize)) {
-				speed+=stepsize;
-				if (speed>(targetSpeed*stepsize)) {
-					speed=targetSpeed*stepsize;
-				}
-			}
-			else if (speed>(targetSpeed*stepsize)) {
-				speed-=stepsize;
+			// decelerate instantly for higher responsiveness
+			if (abs(speed)>abs(targetSpeed*stepsize)) {
+				speed=targetSpeed;
+			} else {
 				if (speed<(targetSpeed*stepsize)) {
-					speed=targetSpeed*stepsize;
+					speed+=stepsize*((float)accelInterval/1000.0)*accel;
+					if (speed>(targetSpeed*stepsize)) {
+						speed=targetSpeed*stepsize;
+					}
+				}
+				else if (speed>(targetSpeed*stepsize)) {
+					speed-=stepsize*((float)accelInterval/1000.0)*accel;
+					if (speed<(targetSpeed*stepsize)) {
+						speed=targetSpeed*stepsize;
+					}
 				}
 			}
 			// set direction based on speed
@@ -193,7 +198,7 @@ public:
 			}
 			// Calculate new step duration
 			if (speed!=0)
-				halfStepPeriod=(unsigned long)1000000/(abs(speed)*2)
+				halfStepPeriod=(unsigned long)1000000/(abs(speed)*2);
 		}
 		
 
@@ -286,13 +291,15 @@ void receiveCommands () {
 				value=leftMotor.setMicrostep(value);
 				value=rightMotor.setMicrostep(value); 
 				break;
-			case SET_PING: // max time between pings before shutdown
+			case SET_MAX_PING: // max time between pings before shutdown
 				Serial.print("SET_MAX_PING "); 
 				maxPing=value; 
 				break;
 			case PING:
 				Serial.print("PING "); Serial.print(millis()-lastPing-value);
 				lastPing=millis();
+				break;
+			case TEST:
 				break;
 			default:
 				stop();
@@ -342,7 +349,7 @@ void loop() {
 		prevPrint=millis();
 		Serial.print("STATUS ");Serial.print(" P: ");Serial.print(!digitalRead(13));
 		Serial.print(" TL:");Serial.print(leftMotor.getTargetSpeed());Serial.print("TR:");Serial.print(rightMotor.getTargetSpeed());
-		Serial.print(" CL:");Serial.print(leftMotor.getSpeed());Serial.print("CR:");Serial.print(rightMotor.getSpeed());
+		// Serial.print(" CL:");Serial.print(leftMotor.getSpeed());Serial.print("CR:");Serial.print(rightMotor.getSpeed());
 		Serial.print(" AL:");Serial.print(leftMotor.getAverageSpeed());Serial.print("AR:");Serial.print(rightMotor.getAverageSpeed());
 		
 		Serial.println();
