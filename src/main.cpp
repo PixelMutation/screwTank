@@ -303,7 +303,7 @@ void receiveCommands () {
 				maxPing=value; 
 				break;
 			case PING:
-				Serial.print("ACK: PING"); Serial.print(millis()-lastPing-(unsigned long)value);
+				Serial.print("ACK: PING "); Serial.print(millis()-lastPing);
 				lastPing=millis();
 				break;
 			case TEST:
@@ -352,8 +352,9 @@ void loop() {
 	// Connection watchdog
 	if (maxPing!=-1){
 		if (commsConnected) {
-			commsConnected=false;
+			
 			if(millis()-lastPing>(unsigned long)maxPing){
+				commsConnected=false;
 				Serial.println("WARN: Missed keepalive ping, stopping");
 				stop();
 			}
