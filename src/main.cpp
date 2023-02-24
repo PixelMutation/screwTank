@@ -8,7 +8,7 @@
 // absolute max accel
 #define MAX_ACCEL 2000
 
-#define BAUD 9600
+#define BAUD 115200
 
 enum microstep{
 	FULL      = 1,
