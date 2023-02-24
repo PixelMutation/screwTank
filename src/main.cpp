@@ -241,7 +241,7 @@ int16_t offsetL=0;
 int16_t offsetR=0;
 
 unsigned long lastPing=0;
-int16_t maxPing=5000;
+int16_t maxPing=500;
 
 void stop(bool print=true) {
 	speedL=0;
@@ -273,11 +273,11 @@ void receiveCommands () {
 		// Movement
 			case L_SPEED: // set speed of left side
 				value=constrain(value,-255,255);
-				Serial.print("ACK: L_SPEED ");
+				Serial.print("ACK: L ");
 				speedL=value; break;
 			case R_SPEED: // set speed of right side
 				value=constrain(value,-255,255);
-				Serial.print("ACK: R_SPEED ");
+				Serial.print("ACK: R ");
 				speedR=value; break;
 		// Configuration
 			case SET_MAX_SPEED: // set speed of right side
@@ -310,7 +310,6 @@ void receiveCommands () {
 			default:
 				Serial.print("ERROR: Unknown command, stopping ");
 				stop(false);
-				value=0;
 		}
 		// Apply speed with offsets
 		
